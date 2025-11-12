@@ -50,6 +50,7 @@ app.get("/api/turn", async (req: express.Request, res: express.Response) => {
     });
 
     const createData = await createResponse.json();
+    console.log("CREATE", createData)
     const apiKey = createData.apiKey;
 
     // Fetch ICE servers array
