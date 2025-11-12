@@ -3,7 +3,14 @@ let dataChannel: RTCDataChannel;
 let ws: WebSocket;
 
 const configuration = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        {
+            urls: 'turn:numb.viagenie.ca:3478',
+            credential: 'muazkh',       // public demo password
+            username: 'webrtc@live.com'
+        }
+    ]
 };
 
 export function initConnection(onDataReceived: Function) {
