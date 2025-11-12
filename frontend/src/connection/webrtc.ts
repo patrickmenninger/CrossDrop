@@ -5,7 +5,7 @@ let targetId: string;
 
 async function fetchTurnServers() {
     try {
-        const res = await fetch("/api/turn");
+        const res = await fetch("https://crossdrop-vwxr.onrender.com/api/turn");
         if (!res.ok) throw new Error("Failed to fetch TURN credentials");
         return await res.json();
     } catch (err) {
