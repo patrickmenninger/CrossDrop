@@ -4,11 +4,13 @@
     "dev": "npx tsx server.ts"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/ws": "^8.18.1",
     "ts-node": "^10.9.2",

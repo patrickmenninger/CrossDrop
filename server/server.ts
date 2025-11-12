@@ -1,13 +1,19 @@
-import * as dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import {WebSocketServer} from 'ws';
-import * as express from "express";
+import express from "express";
+import cors from "cors";
 
 dotenv.config();
-
 const PORT = process.env.PORT || 8000;
 const TURN_API_KEY = process.env.TURN_API_KEY
 
 const app = express()
+
+app.use(cors({
+  origin: "https://cross-drop.vercel.app",
+  methods: ["GET", "POST"],
+  credentials: true, // optional if you use cookies
+}));
 
 const clientIds = new Map()
 
