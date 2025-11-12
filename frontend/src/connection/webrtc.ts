@@ -68,22 +68,113 @@ export async function createOffer(onDataReceived: Function, target: string) {
     ws.send(JSON.stringify({type: "offer", target: targetId, payload: offer}))
 }
 
-export function sendFile(file: File) {
-    if (dataChannel && dataChannel.readyState === 'open') {
-        console.log("Sending: ", file.name)
-        dataChannel.send(`(File content for ${file.name})`);
-    } else {
+export async function sendFile(file: File) {
+    if (!dataChannel || dataChannel.readyState !== 'open') {
         console.warn("Data channel is not open.");
+        return
     }
+
+    console.log("Sending: ", file.name)
+    dataChannel.binaryType = "arraybuffer";
+
+    // send metadata
+    dataChannel.send(JSON.stringify({
+        type: 'metadata',
+        payload: {
+            name: file.name,
+            size: file.size,
+            type: file.type
+        }
+    }));
+
+    // send chunks
+    const CHUNK_SIZE = 64 * 1024;
+    let offset = 0
+
+    while (offset < file.size) {
+        if (dataChannel.bufferedAmount > 1024 * 1024) {
+            await new Promise<void>(resolve => {
+                dataChannel.onbufferedamountlow = () => {
+                    dataChannel.onbufferedamountlow = null; // clear listener
+                    resolve()
+                }
+            })
+        }
+
+        const slice = file.slice(offset, offset + CHUNK_SIZE);
+        const chunk = await slice.arrayBuffer();
+        dataChannel.send(chunk);
+        offset += chunk.byteLength;
+    }
+
+    dataChannel.send(JSON.stringify({
+        type: "end",
+        payload: {name: file.name}
+    }));
+    console.log("File sending complete.");
+
 }
 
 function setupDataChannel(channel: RTCDataChannel, onDataReceived: Function) {
     dataChannel = channel
+    dataChannel.binaryType = "arraybuffer"
+
+    let receivedChunks: ArrayBuffer[] = [];
+    let fileMetaData: {name: string, size: number, type: string} | null = null
+
     dataChannel.onopen = () => console.log("Data channel is OPEN");
-    dataChannel.onclose = () => console.log("Data channel is CLOSED");
+    dataChannel.onclose = () => {
+        console.log("Data channel is CLOSED")
+
+        receivedChunks = [];
+        fileMetaData = null;
+    };
 
     dataChannel.onmessage = (event) => {
         console.log("Data channel message received:", event.data);
+
+        if (typeof event.data === 'string') {
+            const msg = JSON.parse(event.data);
+
+            if (msg.type === 'metadata') {
+
+                fileMetaData = msg.payload;
+                receivedChunks = [];
+                console.log("Receiving file: ", fileMetaData);
+
+            } else if (msg.type === 'end') {
+
+                if (!fileMetaData) {
+                    console.error("Received 'end' signal without metadata");
+                    return;
+                }
+
+                console.log("File reception complete: ", fileMetaData)
+
+                // reconstruct file
+                const fileBlob = new Blob(receivedChunks, {type: fileMetaData.type});
+                const fileUrl = URL.createObjectURL(fileBlob);
+
+                onDataReceived({
+                    name: fileMetaData.name,
+                    url: fileUrl,
+                    size: fileBlob.size
+                });
+
+                receivedChunks = [];
+                fileMetaData = null
+
+            }
+        } else if (event.data instanceof ArrayBuffer) {
+            if (!fileMetaData) {
+                console.error("Received chunk without metadata.");
+                return;
+            }
+
+            receivedChunks.push(event.data)
+
+        }
+
         onDataReceived(event.data)
     }
 }
