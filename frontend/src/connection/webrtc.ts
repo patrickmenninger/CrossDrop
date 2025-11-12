@@ -3,16 +3,23 @@ let dataChannel: RTCDataChannel;
 let ws: WebSocket;
 let targetId: string;
 
-const configuration = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-    ]
-};
+async function fetchTurnServers() {
+    try {
+        const res = await fetch("/api/turn");
+        if (!res.ok) throw new Error("Failed to fetch TURN credentials");
+        return await res.json();
+    } catch (err) {
+        console.error("Error fetching TURN servers:", err);
+        return []; // fallback to empty, only STUN will be used
+    }
+}
 
-export function initConnection(onDataReceived: Function, onClientsReceived: Function) {
+export async function initConnection(onDataReceived: Function, onClientsReceived: Function) {
+
+    const iceServers = await fetchTurnServers()
 
     ws = new WebSocket('wss://crossdrop-vwxr.onrender.com/');
-    pc = new RTCPeerConnection(configuration);
+    pc = new RTCPeerConnection({iceServers})
 
     ws.onmessage = (event) => handleSignalingMessage(event, onClientsReceived);
 
@@ -23,6 +30,10 @@ export function initConnection(onDataReceived: Function, onClientsReceived: Func
     pc.onconnectionstatechange = () => {
         console.log('Connection state changed to:', pc.connectionState);
     };
+
+    pc.onicecandidateerror = (error) => {
+        console.log("ICE error: ", error)
+    }
 
     pc.onicecandidate = (event) => {
         if (event.candidate && targetId) {

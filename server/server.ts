@@ -1,15 +1,13 @@
+import * as dotenv from 'dotenv';
 import {WebSocketServer} from 'ws';
-import * as http from 'http'
-import { randomUUID } from 'crypto';
+import * as express from "express";
+
+dotenv.config();
 
 const PORT = process.env.PORT || 8000;
+const TURN_API_KEY = process.env.TURN_API_KEY
 
-const server = http.createServer();
-const wss = new WebSocketServer({server});
-
-server.listen(PORT, () => {
-  console.log(`WebSocket server running on port ${PORT}`);
-});
+const app = express()
 
 const clientIds = new Map()
 
@@ -32,6 +30,35 @@ function broadcastClients() {
 
     })
 }
+
+app.get("/api/turn", async (req: express.Request, res: express.Response) => {
+  try {
+    // 4-hour expiry (14400 seconds) or whatever you need
+    const createResponse = await fetch(`https://crossdrop.metered.live/api/v1/turn/credential?secretKey=${TURN_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        expiryInSeconds: 14400,
+        label: `user-${Date.now()}` // unique per client
+      })
+    });
+
+    const createData = await createResponse.json();
+    const apiKey = createData.apiKey;
+
+    // Fetch ICE servers array
+    const iceResponse = await fetch(`https://crossdrop.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`);
+    const iceServers = await iceResponse.json();
+
+    res.status(200).json(iceServers); // send ICE servers to frontend
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to generate TURN credentials" });
+  }
+});
+
+const server = app.listen(PORT, () => console.log("Server running"))
+const wss = new WebSocketServer({server});
 
 wss.on("connection", (ws) => {
 
@@ -73,4 +100,10 @@ wss.on("connection", (ws) => {
         clientIds.delete(ws)
         broadcastClients()
     });
+
+    ws.on('error', () => {
+        console.log("Client errored");
+        clientIds.delete(ws)
+        broadcastClients
+    })
 })
