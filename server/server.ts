@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 8000;
 const app = express()
 
 app.use(cors({
-  origin: "https://cross-drop.vercel.app",
+  origin: ["https://cross-drop.vercel.app", "http://localhost:5173"],
   methods: ["GET", "POST"],
   credentials: true, // optional if you use cookies
 }));
