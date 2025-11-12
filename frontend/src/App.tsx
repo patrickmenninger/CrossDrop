@@ -1,51 +1,104 @@
-// src/App.js
+// src/App.tsx
 import { useEffect, useState, useRef } from 'react';
-import { initConnection, createOffer, sendFile } from './connection/webrtc.ts';
+import { initConnection, createOffer, sendFile } from './connection/webrtc';
 
 function App() {
   const [receivedMessages, setReceivedMessages] = useState<string[]>([]);
+  const [clients, setClients] = useState<{ you: string; clients: string[] } | null>(null);
+  const [selectedClient, setSelectedClient] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Callback to update our state when data arrives
+  // Called when data is received over the data channel
   const handleDataReceived = (data: string) => {
-    setReceivedMessages(prev => [...prev, data]);
+    setReceivedMessages((prev) => [...prev, data]);
   };
 
-  // On component mount, initialize the connection
+  // Called when the signaling server sends us the list of clients
+  const handleClientsReceived = (payload: { you: string; clients: string[] }) => {
+    console.log("Clients update:", payload);
+    setClients(payload);
+
+    // Reset selected client if it disconnected
+    if (selectedClient && !payload.clients.includes(selectedClient)) {
+      setSelectedClient(null);
+    }
+  };
+
+  // Initialize WebRTC + signaling once when component mounts
   useEffect(() => {
-    initConnection(handleDataReceived);
+    initConnection(handleDataReceived, handleClientsReceived);
   }, []);
 
-  // Handler for the file input button
+  // Send the selected file over the data channel
   const handleSendFileClick = () => {
-    const file = fileInputRef.current?.files;
-    if (file && file.length !== 0) {
-      sendFile(file[0]);
+    const file = fileInputRef.current?.files?.[0];
+    if (file) sendFile(file);
+  };
+
+  // Create offer to the selected client
+  const handleStartConnection = () => {
+    if (!selectedClient) {
+      alert("Please select a client to connect to first!");
+      return;
     }
+    createOffer(handleDataReceived, selectedClient);
   };
 
   return (
     <div className="App" style={{ padding: '20px' }}>
-      <h1>WebRTC Skeleton</h1>
-      <p>Instructions: Open this in two tabs. Click '1. Start Connection' in Tab A. Then you can send files from either tab.</p>
-      
+      <h1>WebRTC File Share</h1>
+      <p>
+        Open this page in two tabs or browsers. Wait for both to appear in the client list,
+        then select one and start a connection.
+      </p>
+
       <hr />
 
-      {/* This button is for Peer A (the initiator) */}
-      <button onClick={() => createOffer(handleDataReceived)}>
-        1. Start Connection (Peer A)
+      {/* Clients Section */}
+      <h3>Connected Clients</h3>
+      {!clients ? (
+        <p>Connecting to signaling server...</p>
+      ) : (
+        <div>
+          <p><strong>Your ID:</strong> {clients.you}</p>
+          {clients.clients.length === 0 ? (
+            <p>No other clients connected.</p>
+          ) : (
+            <ul>
+              {clients.clients.map((clientId) => (
+                <li key={clientId}>
+                  <label>
+                    <input
+                      type="radio"
+                      name="targetClient"
+                      value={clientId}
+                      checked={selectedClient === clientId}
+                      onChange={() => setSelectedClient(clientId)}
+                    />
+                    {clientId}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <button onClick={handleStartConnection} disabled={!selectedClient}>
+        1 Start Connection
       </button>
 
       <hr />
 
       <input type="file" ref={fileInputRef} />
       <button onClick={handleSendFileClick}>
-        2. Send File
+        2 Send File
       </button>
 
       <hr />
 
-      <h3>Received Messages/Files:</h3>
+      <h3>Received Messages / Files:</h3>
       <ul>
         {receivedMessages.map((msg, index) => (
           <li key={index}>{msg}</li>

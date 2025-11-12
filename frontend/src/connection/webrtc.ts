@@ -1,24 +1,20 @@
 let pc: RTCPeerConnection;
 let dataChannel: RTCDataChannel;
 let ws: WebSocket;
+let targetId: string;
 
 const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        {
-            urls: 'turn:numb.viagenie.ca:3478',
-            credential: 'muazkh',       // public demo password
-            username: 'webrtc@live.com'
-        }
     ]
 };
 
-export function initConnection(onDataReceived: Function) {
+export function initConnection(onDataReceived: Function, onClientsReceived: Function) {
 
     ws = new WebSocket('wss://crossdrop-vwxr.onrender.com/');
     pc = new RTCPeerConnection(configuration);
 
-    ws.onmessage = handleSignalingMessage;
+    ws.onmessage = (event) => handleSignalingMessage(event, onClientsReceived);
 
     pc.oniceconnectionstatechange = () => {
         console.log('ICE state changed to:', pc.iceConnectionState);
@@ -29,10 +25,10 @@ export function initConnection(onDataReceived: Function) {
     };
 
     pc.onicecandidate = (event) => {
-        if (event.candidate) {
+        if (event.candidate && targetId) {
             console.log("Sending ICE candidate...");
 
-            ws.send(JSON.stringify({type: "candidate", payload: event.candidate}));
+            ws.send(JSON.stringify({type: "candidate", target: targetId, payload: event.candidate}));
         }
     };
 
@@ -46,17 +42,19 @@ export function initConnection(onDataReceived: Function) {
 /**
  * Initiates the connection by sending an offer to the peer
  */
-export async function createOffer(onDataReceived: Function) {
+export async function createOffer(onDataReceived: Function, target: string) {
     console.log("Creating data channel...");
 
     const channel = pc.createDataChannel("fileTransfer")
     setupDataChannel(channel, onDataReceived);
 
+    targetId = target
+
     console.log("Creating offer...")
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer)
 
-    ws.send(JSON.stringify({type: "offer", payload: offer}))
+    ws.send(JSON.stringify({type: "offer", target: targetId, payload: offer}))
 }
 
 export function sendFile(file: File) {
@@ -79,10 +77,13 @@ function setupDataChannel(channel: RTCDataChannel, onDataReceived: Function) {
     }
 }
 
-async function handleSignalingMessage(event: MessageEvent) {
+async function handleSignalingMessage(event: MessageEvent, onClientsReceived: Function) {
     const msg = JSON.parse(event.data)
 
-    if (msg.type === 'offer') {
+    if (msg.type === 'clients') {
+        console.log("Clients received")
+        onClientsReceived(msg.payload)
+    } else if (msg.type === 'offer') {
         console.log("Received offer");
         await pc.setRemoteDescription(new RTCSessionDescription(msg.payload))
 
@@ -90,7 +91,7 @@ async function handleSignalingMessage(event: MessageEvent) {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        ws.send(JSON.stringify({type: 'answer', payload: answer}))
+        ws.send(JSON.stringify({type: 'answer', target: msg.sender, payload: answer}))
     } else if (msg.type === 'answer') {
         console.log("Received answer")
         await pc.setRemoteDescription(new RTCSessionDescription(msg.payload))
