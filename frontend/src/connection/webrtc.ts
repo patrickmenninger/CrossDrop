@@ -5,7 +5,7 @@ let targetId: string;
 
 async function fetchTurnServers() {
     try {
-        const res = await fetch("https://crossdrop-vwxr.onrender.com/api/turn");
+        const res = await fetch(import.meta.env.VITE_API_URL + "/turn");
         if (!res.ok) throw new Error("Failed to fetch TURN credentials");
         return await res.json();
     } catch (err) {
@@ -174,8 +174,6 @@ function setupDataChannel(channel: RTCDataChannel, onDataReceived: Function) {
             receivedChunks.push(event.data)
 
         }
-
-        onDataReceived(event.data)
     }
 }
 

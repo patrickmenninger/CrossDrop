@@ -1,28 +1,29 @@
 // src/App.tsx
 import { useEffect, useState, useRef } from 'react';
 import { initConnection, createOffer, sendFile } from './connection/webrtc';
+import FilePreview from './components/FilePreview';
+
+export interface ReceivedFile {
+    name: string;
+    size: number;
+    url: string;
+}
 
 function App() {
-  const [receivedMessages, setReceivedMessages] = useState<string[]>([]);
+  const [receivedFile, setReceivedFile] = useState<ReceivedFile>();
   const [clients, setClients] = useState<{ you: string; clients: string[] } | null>(null);
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Called when data is received over the data channel
-  const handleDataReceived = (data: string) => {
-    setReceivedMessages((prev) => [...prev, data]);
+  const handleDataReceived = (file: ReceivedFile) => {
+    setReceivedFile(file);
   };
 
   // Called when the signaling server sends us the list of clients
   const handleClientsReceived = (payload: { you: string; clients: string[] }) => {
     console.log("Clients update:", payload);
     setClients(payload);
-
-    // Reset selected client if it disconnected
-    if (selectedClient && !payload.clients.includes(selectedClient)) {
-      setSelectedClient(null);
-    }
   };
 
   // Initialize WebRTC + signaling once when component mounts
@@ -73,7 +74,6 @@ function App() {
                       type="radio"
                       name="targetClient"
                       value={clientId}
-                      checked={selectedClient === clientId}
                       onChange={() => handleStartConnection(clientId)}
                     />
                     {clientId}
@@ -98,12 +98,13 @@ function App() {
 
       <hr />
 
-      <h3>Received Messages / Files:</h3>
-      <ul>
-        {receivedMessages.map((msg, index) => (
-          <li key={index}>{msg}</li>
-        ))}
-      </ul>
+        {/* Received Files Section */}
+      <h3>Received Files:</h3>
+      {!receivedFile ? (
+        <p>No files received yet.</p>
+      ) : (
+        <FilePreview file={receivedFile}/>
+      )}
     </div>
   );
 }
