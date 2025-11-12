@@ -39,23 +39,31 @@ function broadcastClients() {
 
 app.get("/api/turn", async (req: express.Request, res: express.Response) => {
   try {
-    // 4-hour expiry (14400 seconds) or whatever you need
-    const createResponse = await fetch(`https://crossdrop.metered.live/api/v1/turn/credential?secretKey=${TURN_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        expiryInSeconds: 14400,
-        label: `user-${Date.now()}` // unique per client
-      })
-    });
-
-    const createData = await createResponse.json();
-    console.log("CREATE", createData)
-    const apiKey = createData.apiKey;
-
-    // Fetch ICE servers array
-    const iceResponse = await fetch(`https://crossdrop.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`);
-    const iceServers = await iceResponse.json();
+    const iceServers = [
+        {
+            urls: "stun:stun.relay.metered.ca:80",
+        },
+        {
+            urls: "turn:standard.relay.metered.ca:80",
+            username: process.env.TURN_USERNAME,
+            credential: process.env.TURN_PASSWORD,
+        },
+        {
+            urls: "turn:standard.relay.metered.ca:80?transport=tcp",
+            username: process.env.TURN_USERNAME,
+            credential: process.env.TURN_PASSWORD,
+        },
+        {
+            urls: "turn:standard.relay.metered.ca:443",
+            username: process.env.TURN_USERNAME,
+            credential: process.env.TURN_PASSWORD,
+        },
+        {
+            urls: "turns:standard.relay.metered.ca:443?transport=tcp",
+            username: process.env.TURN_USERNAME,
+            credential: process.env.TURN_PASSWORD,
+        },
+    ]
 
     res.status(200).json(iceServers); // send ICE servers to frontend
   } catch (err) {
