@@ -8,7 +8,7 @@ const configuration = {
 
 export function initConnection(onDataReceived: Function) {
 
-    ws = new WebSocket('ws://localhost:8000');
+    ws = new WebSocket('wss://crossdrop-vwxr.onrender.com/');
     pc = new RTCPeerConnection(configuration);
 
     ws.onmessage = handleSignalingMessage;

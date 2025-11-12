@@ -1,5 +1,5 @@
 // src/App.js
-import { useEffect, useState, useRef, type Ref } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { initConnection, createOffer, sendFile } from './connection/webrtc.ts';
 
 function App() {
