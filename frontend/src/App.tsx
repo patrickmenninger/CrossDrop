@@ -43,7 +43,6 @@ function App() {
       return;
     }
     createOffer(handleDataReceived, clientId);
-    createOffer(handleDataReceived, clientId);
   };
 
   return (
