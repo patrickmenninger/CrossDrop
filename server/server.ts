@@ -103,11 +103,6 @@ wss.on("connection", (ws) => {
             }
         })
 
-        // wss.clients.forEach(client => {
-        //     if (client !== ws && client.readyState === ws.OPEN) {
-        //         client.send(message.toString())
-        //     }
-        // })
     });
 
     ws.on('close', () => {
@@ -119,6 +114,6 @@ wss.on("connection", (ws) => {
     ws.on('error', () => {
         console.log("Client errored");
         clientIds.delete(ws)
-        broadcastClients
+        broadcastClients()
     })
 })

@@ -37,12 +37,12 @@ function App() {
   };
 
   // Create offer to the selected client
-  const handleStartConnection = () => {
-    if (!selectedClient) {
+  const handleStartConnection = (clientId: string) => {
+    if (!clientId) {
       alert("Please select a client to connect to first!");
       return;
     }
-    createOffer(handleDataReceived, selectedClient);
+    createOffer(handleDataReceived, clientId);
   };
 
   return (
@@ -74,7 +74,7 @@ function App() {
                       name="targetClient"
                       value={clientId}
                       checked={selectedClient === clientId}
-                      onChange={() => setSelectedClient(clientId)}
+                      onChange={() => handleStartConnection(clientId)}
                     />
                     {clientId}
                   </label>
@@ -85,9 +85,9 @@ function App() {
         </div>
       )}
 
-      <button onClick={handleStartConnection} disabled={!selectedClient}>
+      {/* <button onClick={handleStartConnection} disabled={!selectedClient}>
         1 Start Connection
-      </button>
+      </button> */}
 
       <hr />
 
