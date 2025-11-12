@@ -5,7 +5,6 @@ import cors from "cors";
 
 dotenv.config();
 const PORT = process.env.PORT || 8000;
-const TURN_API_KEY = process.env.TURN_API_KEY
 
 const app = express()
 

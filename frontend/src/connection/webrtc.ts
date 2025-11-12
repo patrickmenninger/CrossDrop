@@ -18,7 +18,7 @@ export async function initConnection(onDataReceived: Function, onClientsReceived
 
     const iceServers = await fetchTurnServers()
 
-    ws = new WebSocket('wss://crossdrop-vwxr.onrender.com/');
+    ws = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
     pc = new RTCPeerConnection({iceServers})
 
     ws.onmessage = (event) => handleSignalingMessage(event, onClientsReceived);
