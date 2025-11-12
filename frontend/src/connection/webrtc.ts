@@ -65,18 +65,6 @@ export async function createOffer(onDataReceived: Function, target: string) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer)
 
-    await new Promise<void>((resolve) => {
-        if (pc.iceGatheringState === "complete") return resolve();
-
-        const checkState = () => {
-            if (pc.iceGatheringState === "complete") {
-                pc.removeEventListener("icegatheringstatechange", checkState);
-                resolve()
-            }
-        };
-        pc.addEventListener("icegatheringstatechange", checkState)
-    })
-
     ws.send(JSON.stringify({type: "offer", target: targetId, payload: offer}))
 }
 
@@ -108,6 +96,7 @@ async function handleSignalingMessage(event: MessageEvent, onClientsReceived: Fu
         onClientsReceived(msg.payload)
     } else if (msg.type === 'offer') {
         console.log("Received offer");
+        targetId = msg.sender
         await pc.setRemoteDescription(new RTCSessionDescription(msg.payload))
 
         console.log("Creating answer...");
