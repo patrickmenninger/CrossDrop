@@ -65,6 +65,18 @@ export async function createOffer(onDataReceived: Function, target: string) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer)
 
+    await new Promise<void>((resolve) => {
+        if (pc.iceGatheringState === "complete") return resolve();
+
+        const checkState = () => {
+            if (pc.iceGatheringState === "complete") {
+                pc.removeEventListener("icegatheringstatechange", checkState);
+                resolve()
+            }
+        };
+        pc.addEventListener("icegatheringstatechange", checkState)
+    })
+
     ws.send(JSON.stringify({type: "offer", target: targetId, payload: offer}))
 }
 
