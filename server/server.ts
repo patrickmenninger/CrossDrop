@@ -40,7 +40,7 @@ app.get("/api/turn", async (req: express.Request, res: express.Response) => {
   try {
     const iceServers = [
         {
-            urls: "stun:stun.relay.metered.ca:80",
+            urls: "stun.l.google.com:19302",
         },
         // {
         //     urls: "turn:standard.relay.metered.ca:80",
