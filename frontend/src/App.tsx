@@ -9,9 +9,14 @@ export interface ReceivedFile {
     url: string;
 }
 
+export interface ClientInfo {
+    id: string;
+    name: string
+}
+
 function App() {
   const [receivedFile, setReceivedFile] = useState<ReceivedFile>();
-  const [clients, setClients] = useState<{ you: string; clients: {id: string, name: string}[] } | null>(null);
+  const [clients, setClients] = useState<{ you: ClientInfo; clients: ClientInfo[] } | null>(null);
   const [pairError, setPairError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +31,7 @@ function App() {
   };
 
   // Called when the signaling server sends us the list of clients
-  const handleClientsReceived = (payload: { you: string; clients: {id: string, name: string}[] }) => {
+  const handleClientsReceived = (payload: { you: ClientInfo; clients: ClientInfo[] }) => {
     console.log("Clients update:", payload);
     setClients(payload);
   };
@@ -68,7 +73,7 @@ function App() {
         <p>Connecting to signaling server...</p>
       ) : (
         <div>
-          <p><strong>Your ID:</strong> {clients.you}</p>
+          <p><strong>Your Name:</strong> {clients.you.name}</p>
           {clients.clients.length === 0 ? (
             <p>No other clients connected.</p>
           ) : (
