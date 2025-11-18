@@ -14,7 +14,7 @@ async function fetchTurnServers() {
     }
 }
 
-export async function initConnection(onDataReceived: Function, onClientsReceived: Function) {
+export async function initConnection(onDataReceived: Function, onClientsReceived: Function, onNoPair: Function) {
 
     const iceServers = await fetchTurnServers()
 
@@ -41,14 +41,19 @@ export async function initConnection(onDataReceived: Function, onClientsReceived
         console.log('Connection state changed to:', pc.connectionState);
 
         const stats = await pc.getStats();
-        console.log(stats)
+        let hasCandidatePair = false;
 
-        stats.forEach(report => {
-            console.log(report)
-            if (report.type === 'candidate-pair' && report.state === 'failed') {
-                console.log('Selected candidate pair:', report);
+        stats.forEach((report) => {
+            if (report.type === 'candidate-pair') {
+                hasCandidatePair = true; // At least one candidate pair exists
+                console.log('Candidate Pair Report:', report);
             }
         });
+
+        if (!hasCandidatePair) {
+            onNoPair();
+        }
+
     };
 
     pc.onicecandidateerror = (error) => {

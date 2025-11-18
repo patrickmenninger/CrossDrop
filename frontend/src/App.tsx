@@ -20,6 +20,10 @@ function App() {
     setReceivedFile(file);
   };
 
+  const handleNoPairFound = () => {
+    alert("No valid ICE candidate pair was found. Please try reconnecting.");
+  };
+
   // Called when the signaling server sends us the list of clients
   const handleClientsReceived = (payload: { you: string; clients: string[] }) => {
     console.log("Clients update:", payload);
