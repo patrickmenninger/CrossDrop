@@ -11,7 +11,8 @@ export interface ReceivedFile {
 
 function App() {
   const [receivedFile, setReceivedFile] = useState<ReceivedFile>();
-  const [clients, setClients] = useState<{ you: string; clients: string[] } | null>(null);
+  const [clients, setClients] = useState<{ you: string; clients: {id: string, name: string}[] } | null>(null);
+  const [pairError, setPairError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -21,11 +22,11 @@ function App() {
   };
 
   const handleNoPairFound = () => {
-    alert("No valid ICE candidate pair was found. Please try reconnecting.");
+    setPairError("Could not connect.\nTURN server is on a free tier and limit may have been reached.")
   };
 
   // Called when the signaling server sends us the list of clients
-  const handleClientsReceived = (payload: { you: string; clients: string[] }) => {
+  const handleClientsReceived = (payload: { you: string; clients: {id: string, name: string}[] }) => {
     console.log("Clients update:", payload);
     setClients(payload);
   };
@@ -71,16 +72,16 @@ function App() {
             <p>No other clients connected.</p>
           ) : (
             <ul>
-              {clients.clients.map((clientId) => (
-                <li key={clientId}>
+              {clients.clients.map((client) => (
+                <li key={client.id}>
                   <label>
                     <input
                       type="radio"
                       name="targetClient"
-                      value={clientId}
-                      onChange={() => handleStartConnection(clientId)}
+                      value={client.name}
+                      onChange={() => handleStartConnection(client.id)}
                     />
-                    {clientId}
+                    {client.name}
                   </label>
                 </li>
               ))}
@@ -88,10 +89,6 @@ function App() {
           )}
         </div>
       )}
-
-      {/* <button onClick={handleStartConnection} disabled={!selectedClient}>
-        1 Start Connection
-      </button> */}
 
       <hr />
 
