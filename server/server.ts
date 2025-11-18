@@ -28,7 +28,7 @@ function broadcastClients() {
                     type: "clients", 
                     payload: {
                         you: current, 
-                        clients: Array.from(clientIds.values()).filter((client) => client.id !== current)
+                        clients: Array.from(clientIds.values()).filter((client) => client.id !== current.id)
                     }
                 }
             ))
