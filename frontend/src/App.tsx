@@ -32,7 +32,7 @@ function App() {
 
   // Initialize WebRTC + signaling once when component mounts
   useEffect(() => {
-    initConnection(handleDataReceived, handleClientsReceived);
+    initConnection(handleDataReceived, handleClientsReceived, handleNoPairFound);
   }, []);
 
   // Send the selected file over the data channel
