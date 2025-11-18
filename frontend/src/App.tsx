@@ -63,6 +63,7 @@ function App() {
 
       {/* Clients Section */}
       <h3>Connected Clients</h3>
+      {pairError && <p style={{ color: 'red', whiteSpace: 'pre-wrap' }}>{pairError}</p>}
       {!clients ? (
         <p>Connecting to signaling server...</p>
       ) : (
