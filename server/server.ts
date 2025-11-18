@@ -44,26 +44,26 @@ app.get("/api/turn", async (req: express.Request, res: express.Response) => {
         {
             urls: "stun:stun.l.google.com:19302",
         },
-        {
-            urls: "turn:standard.relay.metered.ca:80",
-            username: process.env.TURN_USERNAME,
-            credential: process.env.TURN_PASSWORD,
-        },
-        {
-            urls: "turn:standard.relay.metered.ca:80?transport=tcp",
-            username: process.env.TURN_USERNAME,
-            credential: process.env.TURN_PASSWORD,
-        },
-        {
-            urls: "turn:standard.relay.metered.ca:443",
-            username: process.env.TURN_USERNAME,
-            credential: process.env.TURN_PASSWORD,
-        },
-        {
-            urls: "turns:standard.relay.metered.ca:443?transport=tcp",
-            username: process.env.TURN_USERNAME,
-            credential: process.env.TURN_PASSWORD,
-        },
+        // {
+        //     urls: "turn:standard.relay.metered.ca:80",
+        //     username: process.env.TURN_USERNAME,
+        //     credential: process.env.TURN_PASSWORD,
+        // },
+        // {
+        //     urls: "turn:standard.relay.metered.ca:80?transport=tcp",
+        //     username: process.env.TURN_USERNAME,
+        //     credential: process.env.TURN_PASSWORD,
+        // },
+        // {
+        //     urls: "turn:standard.relay.metered.ca:443",
+        //     username: process.env.TURN_USERNAME,
+        //     credential: process.env.TURN_PASSWORD,
+        // },
+        // {
+        //     urls: "turns:standard.relay.metered.ca:443?transport=tcp",
+        //     username: process.env.TURN_USERNAME,
+        //     credential: process.env.TURN_PASSWORD,
+        // },
     ]
 
     res.status(200).json(iceServers);
