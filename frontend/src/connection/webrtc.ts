@@ -41,6 +41,7 @@ export async function initConnection(onDataReceived: Function, onClientsReceived
         console.log('Connection state changed to:', pc.connectionState);
 
         const stats = await pc.getStats();
+        console.log(stats)
 
         stats.forEach(report => {
             if (report.type === 'candidate-pair' && report.state === 'failed') {
