@@ -44,6 +44,7 @@ export async function initConnection(onDataReceived: Function, onClientsReceived
         console.log(stats)
 
         stats.forEach(report => {
+            console.log(report)
             if (report.type === 'candidate-pair' && report.state === 'failed') {
                 console.log('Selected candidate pair:', report);
             }
