@@ -5,7 +5,7 @@ let targetId: string;
 
 async function fetchTurnServers() {
     try {
-        const res = await fetch(import.meta.env.VITE_API_URL + "api/turn");
+        const res = await fetch(import.meta.env.VITE_API_URL + "/api/turn");
         if (!res.ok) throw new Error("Failed to fetch TURN credentials");
         return await res.json();
     } catch (err) {
@@ -23,12 +23,30 @@ export async function initConnection(onDataReceived: Function, onClientsReceived
 
     ws.onmessage = (event) => handleSignalingMessage(event, onClientsReceived);
 
-    pc.oniceconnectionstatechange = () => {
+    pc.oniceconnectionstatechange = async () => {
         console.log('ICE state changed to:', pc.iceConnectionState);
+
+        if (pc.iceConnectionState === 'failed') {
+            console.log("ICE connection failed");
+            const stats = await pc.getStats();
+            stats.forEach(report => {
+                if (report.type === 'candidate-pair' && report.state === 'failed') {
+                    console.log('Failed candidate pair:', report.localCandidateType);
+                }
+            });
+        }
     };
 
-    pc.onconnectionstatechange = () => {
+    pc.onconnectionstatechange = async () => {
         console.log('Connection state changed to:', pc.connectionState);
+
+        const stats = await pc.getStats();
+
+        stats.forEach(report => {
+            if (report.type === 'candidate-pair' && report.state === 'failed') {
+                console.log('Selected candidate pair:', report);
+            }
+        });
     };
 
     pc.onicecandidateerror = (error) => {
