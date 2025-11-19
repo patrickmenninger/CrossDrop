@@ -1,3 +1,5 @@
+
+
 let pc: RTCPeerConnection;
 let dataChannel: RTCDataChannel;
 let ws: WebSocket;
@@ -14,7 +16,7 @@ async function fetchTurnServers() {
     }
 }
 
-export async function initConnection(onDataReceived: Function, onClientsReceived: Function, onNoPair: Function) {
+export async function initConnection(onDataReceived: Function, onClientsReceived: Function, onConnectionStatusChange: Function) {
 
     const iceServers = await fetchTurnServers()
 
@@ -28,31 +30,32 @@ export async function initConnection(onDataReceived: Function, onClientsReceived
 
         if (pc.iceConnectionState === 'failed') {
             console.log("ICE connection failed");
-            const stats = await pc.getStats();
-            stats.forEach(report => {
-                if (report.type === 'candidate-pair' && report.state === 'failed') {
-                    console.log('Failed candidate pair:', report.localCandidateType);
-                }
-            });
         }
     };
 
     pc.onconnectionstatechange = async () => {
         console.log('Connection state changed to:', pc.connectionState);
 
-        const stats = await pc.getStats();
-        let hasCandidatePair = false;
-
-        stats.forEach((report) => {
-            if (report.type === 'candidate-pair') {
-                hasCandidatePair = true; // At least one candidate pair exists
-                console.log('Candidate Pair Report:', report);
+        if (pc.connectionState === 'connected') {
+            onConnectionStatusChange("connected");
+        } else if (pc.connectionState === "connecting") {
+            onConnectionStatusChange("connecting");
+        } else {
+            const stats = await pc.getStats();
+            let hasCandidatePair = false;
+    
+            stats.forEach((report) => {
+                if (report.type === 'candidate-pair') {
+                    hasCandidatePair = true; // At least one candidate pair exists
+                    console.log('Candidate Pair Report:', report);
+                }
+            });
+    
+            if (!hasCandidatePair) {
+                onConnectionStatusChange("failed");
             }
-        });
-
-        if (!hasCandidatePair) {
-            onNoPair();
         }
+
 
     };
 
