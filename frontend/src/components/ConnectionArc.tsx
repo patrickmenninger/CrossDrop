@@ -5,7 +5,7 @@ interface ConnectionArcProps {
   youY: number;
   clientX: number;
   clientY: number;
-  status: 'connected' | 'connecting' | 'failed';
+  status: 'connected' | 'connecting' | 'failed' | 'disconnected';
   animationTick?: number;
   arcIndex?: number;
   totalArcs?: number;

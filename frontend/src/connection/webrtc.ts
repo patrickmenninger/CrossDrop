@@ -1,9 +1,71 @@
+/**
+ * Closes the current peer connection and data channel
+ */
+export function closeConnection() {
+    if (targetId) {
+        ws.send(JSON.stringify({type: "close", target: targetId}))
+    }
+    targetId = undefined as any
+    if (dataChannel) {
+        try { dataChannel.close(); } catch {}
+        dataChannel = undefined as any;
+    }
+    if (pc) {
+        try { pc.close(); } catch {}
+        pc = undefined as any;
+    }
+}
 
 
 let pc: RTCPeerConnection;
 let dataChannel: RTCDataChannel;
 let ws: WebSocket;
 let targetId: string;
+let iceServers: RTCIceServer[] = [];
+
+function setupPeerConnection(onDataReceived: Function, onConnectionStatusChange: Function) {
+    const newPc = new RTCPeerConnection({ iceServers });
+    newPc.oniceconnectionstatechange = async () => {
+        console.log('ICE state changed to:', newPc.iceConnectionState);
+        if (newPc.iceConnectionState === 'failed') {
+            console.log("ICE connection failed");
+        }
+    };
+    newPc.onconnectionstatechange = async () => {
+        console.log('Connection state changed to:', newPc.connectionState);
+        if (newPc.connectionState == 'connected') {
+            onConnectionStatusChange("connected", targetId);
+        } else if (newPc.connectionState == "connecting") {
+            onConnectionStatusChange("connecting", targetId);
+        } else {
+            const stats = await newPc.getStats();
+            let hasCandidatePair = false;
+            stats.forEach((report) => {
+                if (report.type === 'candidate-pair') {
+                    hasCandidatePair = true;
+                    console.log('Candidate Pair Report:', report);
+                }
+            });
+            if (!hasCandidatePair) {
+                onConnectionStatusChange("failed", targetId);
+            }
+        }
+    };
+    newPc.onicecandidateerror = (error) => {
+        console.log("ICE error: ", error)
+    };
+    newPc.onicecandidate = (event) => {
+        if (event.candidate && targetId) {
+            console.log("Sending ICE candidate...");
+            ws.send(JSON.stringify({type: "candidate", target: targetId, payload: event.candidate}));
+        }
+    };
+    newPc.ondatachannel = (event) => {
+        console.log("Data channel received");
+        setupDataChannel(event.channel, onDataReceived)
+    };
+    return newPc;
+}
 
 async function fetchTurnServers() {
     try {
@@ -16,84 +78,28 @@ async function fetchTurnServers() {
     }
 }
 
-export async function initConnection(onDataReceived: Function, onClientsReceived: Function, onConnectionStatusChange: Function) {
+export async function initConnection(onClientsReceived: Function, onConnectionStatusChange: Function, onDataReceived: Function) {
 
-    const iceServers = await fetchTurnServers()
+    iceServers = await fetchTurnServers()
 
     ws = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
-    pc = new RTCPeerConnection({iceServers})
 
-    ws.onmessage = (event) => handleSignalingMessage(event, onClientsReceived);
-
-    pc.oniceconnectionstatechange = async () => {
-        console.log('ICE state changed to:', pc.iceConnectionState);
-
-        if (pc.iceConnectionState === 'failed') {
-            console.log("ICE connection failed");
-        }
-    };
-
-    pc.onconnectionstatechange = async () => {
-        console.log('Connection state changed to:', pc.connectionState);
-
-        if (pc.connectionState === 'connected') {
-            onConnectionStatusChange("connected");
-        } else if (pc.connectionState === "connecting") {
-            onConnectionStatusChange("connecting");
-        } else {
-            const stats = await pc.getStats();
-            let hasCandidatePair = false;
-    
-            stats.forEach((report) => {
-                if (report.type === 'candidate-pair') {
-                    hasCandidatePair = true; // At least one candidate pair exists
-                    console.log('Candidate Pair Report:', report);
-                }
-            });
-    
-            if (!hasCandidatePair) {
-                onConnectionStatusChange("failed");
-            }
-        }
-
-
-    };
-
-    pc.onicecandidateerror = (error) => {
-        console.log("ICE error: ", error)
-    }
-
-    pc.onicecandidate = (event) => {
-        if (event.candidate && targetId) {
-            console.log("Sending ICE candidate...");
-
-            ws.send(JSON.stringify({type: "candidate", target: targetId, payload: event.candidate}));
-        }
-    };
-
-    pc.ondatachannel = (event) => {
-        console.log("Data channel received");
-
-        setupDataChannel(event.channel, onDataReceived)
-    }
+    ws.onmessage = (event) => handleSignalingMessage(event, onClientsReceived, onConnectionStatusChange, onDataReceived);
 }
 
 /**
  * Initiates the connection by sending an offer to the peer
  */
-export async function createOffer(onDataReceived: Function, target: string) {
+export async function createOffer(onDataReceived: Function, target: string, onConnectionStatusChange: Function) {
+    pc = setupPeerConnection(onDataReceived, onConnectionStatusChange);
+    targetId = target;
     console.log("Creating data channel...");
-
-    const channel = pc.createDataChannel("fileTransfer")
+    const channel = pc.createDataChannel("fileTransfer");
     setupDataChannel(channel, onDataReceived);
-
-    targetId = target
-
-    console.log("Creating offer...")
+    console.log("Creating offer...");
     const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer)
-
-    ws.send(JSON.stringify({type: "offer", target: targetId, payload: offer}))
+    await pc.setLocalDescription(offer);
+    ws.send(JSON.stringify({type: "offer", target: targetId, payload: offer}));
 }
 
 export async function sendFile(file: File) {
@@ -159,73 +165,82 @@ function setupDataChannel(channel: RTCDataChannel, onDataReceived: Function) {
     };
 
     dataChannel.onmessage = (event) => {
-        console.log("Data channel message received:", event.data);
-
+        // Only handle file transfer messages here
         if (typeof event.data === 'string') {
             const msg = JSON.parse(event.data);
-
             if (msg.type === 'metadata') {
-
                 fileMetaData = msg.payload;
                 receivedChunks = [];
                 console.log("Receiving file: ", fileMetaData);
-
             } else if (msg.type === 'end') {
-
                 if (!fileMetaData) {
                     console.error("Received 'end' signal without metadata");
                     return;
                 }
-
-                console.log("File reception complete: ", fileMetaData)
-
+                console.log("File reception complete: ", fileMetaData);
                 // reconstruct file
-                const fileBlob = new Blob(receivedChunks, {type: fileMetaData.type});
+                const fileBlob = new Blob(receivedChunks, { type: fileMetaData.type });
                 const fileUrl = URL.createObjectURL(fileBlob);
-
                 onDataReceived({
                     name: fileMetaData.name,
                     url: fileUrl,
                     size: fileBlob.size
                 });
-
                 receivedChunks = [];
-                fileMetaData = null
-
+                fileMetaData = null;
             }
         } else if (event.data instanceof ArrayBuffer) {
             if (!fileMetaData) {
                 console.error("Received chunk without metadata.");
                 return;
             }
-
-            receivedChunks.push(event.data)
-
+            receivedChunks.push(event.data);
         }
-    }
+    };
 }
 
-async function handleSignalingMessage(event: MessageEvent, onClientsReceived: Function) {
-    const msg = JSON.parse(event.data)
+async function handleSignalingMessage(event: MessageEvent, onClientsReceived: Function, onConnectionStatusChange: Function, onDataReceived: Function) {
+    const msg = JSON.parse(event.data);
 
     if (msg.type === 'clients') {
-        console.log("Clients received")
-        onClientsReceived(msg.payload)
+        console.log("Clients received");
+        onClientsReceived(msg.payload);
     } else if (msg.type === 'offer') {
         console.log("Received offer");
-        targetId = msg.sender
-        await pc.setRemoteDescription(new RTCSessionDescription(msg.payload))
-
+        pc = setupPeerConnection(onDataReceived, onConnectionStatusChange);
+        targetId = msg.sender;
+        if (!pc) {
+            console.warn("No RTCPeerConnection available to set remote description (offer)");
+            return;
+        }
+        await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
         console.log("Creating answer...");
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-
-        ws.send(JSON.stringify({type: 'answer', target: msg.sender, payload: answer}))
-    } else if (msg.type === 'answer') {
-        console.log("Received answer")
-        await pc.setRemoteDescription(new RTCSessionDescription(msg.payload))
-    } else if (msg.type === 'candidate') {
-        console.log("Received ICE candidate")
-        await pc.addIceCandidate(new RTCIceCandidate(msg.payload))
+        ws.send(JSON.stringify({ type: 'answer', target: msg.sender, payload: answer }));
+    } else if (msg.type === 'answer' || msg.type === 'candidate' || msg.type === 'close') {
+        // Only ignore if target is set and does not match current targetId
+        if (typeof msg.target !== 'undefined' && msg.sender !== targetId) {
+            console.warn(`Ignoring signaling message for old or mismatched target: ${msg.target} (current: ${targetId})`);
+            return;
+        }
+        if (msg.type === 'answer') {
+            console.log("Received answer");
+            if (!pc) {
+                console.warn("No RTCPeerConnection available to set remote description (answer)");
+                return;
+            }
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+        } else if (msg.type === 'candidate') {
+            console.log("Received ICE candidate");
+            if (!pc) {
+                console.warn("No RTCPeerConnection available to add ICE candidate");
+                return;
+            }
+            await pc.addIceCandidate(new RTCIceCandidate(msg.payload));
+        } else if (msg.type === 'close') {
+            console.log("Received close signal. Closing connection.");
+            closeConnection();
+        }
     }
 }

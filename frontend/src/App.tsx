@@ -1,6 +1,6 @@
 // src/App.tsx
-import { useEffect, useState } from 'react';
-import { initConnection, createOffer } from './connection/webrtc';
+import { useEffect, useState, useRef } from 'react';
+import { initConnection, createOffer, sendFile, closeConnection } from './connection/webrtc';
 // import FilePreview from './components/FilePreview';
 import NetworkNode from './components/NetworkNode';
 import ConnectionArc from './components/ConnectionArc';
@@ -21,14 +21,19 @@ function App() {
   const [clients, setClients] = useState<{ you: ClientInfo; clients: ClientInfo[] } | null>(null);
   // Store randomized positions for client nodes
   const [clientPositions, setClientPositions] = useState<{ id: string; x: number; y: number }[]>([]);
-  // Connection status: { [clientId]: 'connected' | 'connecting' | 'failed' }
-  const [connectionStatus, setConnectionStatus] = useState<{ [clientId: string]: 'connected' | 'connecting' | 'failed' }>({});
+  // Connection status: { [clientId]: 'connected' | 'connecting' | 'failed' | 'disconnected' }
+  const [connectionStatus, setConnectionStatus] = useState<{ [clientId: string]: 'connected' | 'connecting' | 'failed' | 'disconnected' }>({});
   // Currently selected client for connection
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   // Animation state for connecting lines
   const [animationTick, setAnimationTick] = useState(0);
 
-//   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedClientIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        selectedClientIdRef.current = selectedClientId;
+    }, [selectedClientId]);
 
   // Called when data is received over the data channel
   const handleDataReceived = (file: ReceivedFile) => {
@@ -89,36 +94,35 @@ function App() {
 
   // Initialize WebRTC + signaling once when component mounts
   useEffect(() => {
-    initConnection(handleDataReceived, handleClientsReceived, setConnectionStatus);
+    initConnection(handleClientsReceived, handleConnectionStatusChange, handleDataReceived);
   }, []);
 
-  // Animation loop for connecting lines
+  // Animation loop for connection lines/arcs: run as long as a client is selected
   useEffect(() => {
     let frame: number;
     const animate = () => {
       setAnimationTick(tick => tick + 1);
       frame = requestAnimationFrame(animate);
     };
-    // Only animate if any client is connecting
-    if (Object.values(connectionStatus).includes('connecting')) {
+    if (selectedClientId) {
       frame = requestAnimationFrame(animate);
       return () => cancelAnimationFrame(frame);
     }
-    // If not connecting, do nothing
     return () => {};
-  }, [connectionStatus]);
+  }, [selectedClientId, connectionStatus]);
 
   // Send the selected file over the data channel
-//   const handleSendFileClick = () => {
-//     const file = fileInputRef.current?.files?.[0];
-//     if (file) sendFile(file);
-//   };
+  const handleSendFileClick = () => {
+    const file = fileInputRef.current?.files?.[0];
+    if (file) sendFile(file);
+  };
+
+  useEffect(() => {
+    console.log("Connection status updated:", connectionStatus);
+  }, [connectionStatus]);
   
-  const handleConnectionStatusChange = (status: 'connected' | 'connecting' | 'failed', clientId?: string) => {
-    const clientToSet = clientId || selectedClientId;
-    console.log(receivedFile) // TODO: REMOVE
-    
-    setConnectionStatus((prev) => ({ ...prev, [clientToSet as string]: status }));
+  const handleConnectionStatusChange = (status: 'connected' | 'connecting' | 'failed', clientId: string) => {
+    setConnectionStatus((prev) => ({ ...prev, [clientId as string]: status }));
   }
 
   // Create offer to the selected client
@@ -127,9 +131,10 @@ function App() {
       alert("Please select a client to connect to first!");
       return;
     }
+    closeConnection(); // Terminate any previous connection
+    setConnectionStatus((prev) => ({ ...prev, [clientId]: 'disconnected' }));
     setSelectedClientId(clientId);
-    handleConnectionStatusChange('connecting', clientId);
-    createOffer(handleDataReceived, clientId);
+    createOffer(handleDataReceived, clientId, handleConnectionStatusChange);
   };
 
   return (
