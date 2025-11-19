@@ -15,20 +15,20 @@ app.use(cors({
   credentials: true, // optional if you use cookies
 }));
 
-const clientIds = new Map()
+const clientsInfo = new Map()
 
 function broadcastClients() {
     wss.clients.forEach(client => {
 
         if (client.readyState === client.OPEN) {
-            const current = clientIds.get(client)
+            const current = clientsInfo.get(client)
     
             client.send(JSON.stringify(
                 {
                     type: "clients", 
                     payload: {
                         you: current, 
-                        clients: Array.from(clientIds.values()).filter((client) => client.id !== current.id)
+                        clients: Array.from(clientsInfo.values()).filter((client) => client.id !== current.id)
                     }
                 }
             ))
@@ -82,7 +82,7 @@ wss.on("connection", (ws) => {
 
     // Assign id and save it
     const id = crypto.randomUUID()
-    clientIds.set(ws, {id, name: uniqueNamesGenerator({
+    clientsInfo.set(ws, {id, name: uniqueNamesGenerator({
         dictionaries: [colors, animals],
         separator: '-',
         style: 'lowerCase'
@@ -98,12 +98,12 @@ wss.on("connection", (ws) => {
 
         wss.clients.forEach(client => {
 
-            const currentId = clientIds.get(client)
+            const clientInfo = clientsInfo.get(client)
 
-            if (msg.target === currentId && client.readyState === client.OPEN) {
+            if (msg.target === clientInfo?.id && client.readyState === client.OPEN) {
                 client.send(JSON.stringify({
                     ...msg,
-                    sender: clientIds.get(ws)
+                    sender: clientsInfo.get(ws).id
                 }))
             }
         })
@@ -112,13 +112,13 @@ wss.on("connection", (ws) => {
 
     ws.on('close', () => {
         console.log('Client disconnected');
-        clientIds.delete(ws)
+        clientsInfo.delete(ws)
         broadcastClients()
     });
 
     ws.on('error', () => {
         console.log("Client errored");
-        clientIds.delete(ws)
+        clientsInfo.delete(ws)
         broadcastClients()
     })
 })
