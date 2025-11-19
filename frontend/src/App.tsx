@@ -1,6 +1,6 @@
 // src/App.tsx
-import { useEffect, useState, useRef } from 'react';
-import { initConnection, createOffer, sendFile } from './connection/webrtc';
+import { useEffect, useState } from 'react';
+import { initConnection, createOffer } from './connection/webrtc';
 // import FilePreview from './components/FilePreview';
 import NetworkNode from './components/NetworkNode';
 import ConnectionArc from './components/ConnectionArc';
@@ -28,7 +28,7 @@ function App() {
   // Animation state for connecting lines
   const [animationTick, setAnimationTick] = useState(0);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+//   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Called when data is received over the data channel
   const handleDataReceived = (file: ReceivedFile) => {
