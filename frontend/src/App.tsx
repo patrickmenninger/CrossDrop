@@ -1,7 +1,7 @@
 // src/App.tsx
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { initConnection, createOffer, sendFile } from './connection/webrtc';
-import FilePreview from './components/FilePreview';
+// import FilePreview from './components/FilePreview';
 import NetworkNode from './components/NetworkNode';
 import ConnectionArc from './components/ConnectionArc';
 
@@ -109,13 +109,14 @@ function App() {
   }, [connectionStatus]);
 
   // Send the selected file over the data channel
-  const handleSendFileClick = () => {
-    const file = fileInputRef.current?.files?.[0];
-    if (file) sendFile(file);
-  };
+//   const handleSendFileClick = () => {
+//     const file = fileInputRef.current?.files?.[0];
+//     if (file) sendFile(file);
+//   };
   
   const handleConnectionStatusChange = (status: 'connected' | 'connecting' | 'failed', clientId?: string) => {
     const clientToSet = clientId || selectedClientId;
+    console.log(receivedFile) // TODO: REMOVE
     
     setConnectionStatus((prev) => ({ ...prev, [clientToSet as string]: status }));
   }
