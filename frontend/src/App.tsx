@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useEffect, useState, useRef } from 'react';
-import { initConnection, createOffer, sendFile, closeConnection } from './connection/webrtc';
+import { initConnection, createOffer, closeConnection } from './connection/webrtc';
 // import FilePreview from './components/FilePreview';
 import NetworkNode from './components/NetworkNode';
 import ConnectionArc from './components/ConnectionArc';
@@ -18,6 +18,7 @@ export interface ClientInfo {
 
 function App() {
   const [receivedFile, setReceivedFile] = useState<ReceivedFile>();
+  console.log(receivedFile)
   const [clients, setClients] = useState<{ you: ClientInfo; clients: ClientInfo[] } | null>(null);
   // Store randomized positions for client nodes
   const [clientPositions, setClientPositions] = useState<{ id: string; x: number; y: number }[]>([]);
@@ -28,7 +29,7 @@ function App() {
   // Animation state for connecting lines
   const [animationTick, setAnimationTick] = useState(0);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+//   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedClientIdRef = useRef<string | null>(null);
     useEffect(() => {
@@ -112,10 +113,10 @@ function App() {
   }, [selectedClientId, connectionStatus]);
 
   // Send the selected file over the data channel
-  const handleSendFileClick = () => {
-    const file = fileInputRef.current?.files?.[0];
-    if (file) sendFile(file);
-  };
+//   const handleSendFileClick = () => {
+//     const file = fileInputRef.current?.files?.[0];
+//     if (file) sendFile(file);
+//   };
 
   useEffect(() => {
     console.log("Connection status updated:", connectionStatus);
